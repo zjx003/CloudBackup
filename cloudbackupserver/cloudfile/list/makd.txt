@@ -1,0 +1,79 @@
+/*=============================================================== 
+*   Copyright (C) . All rights reserved.")
+*   文件名称： 
+*   创 建 者：zhang
+*   创建日期：
+*   描    述：封装TcpSocket类，向外提供轻便的socket接口 
+*       1. 创建套接字   
+*       2. 未套接字绑定地址
+*       3. 客户端向服务端发起连接请求
+*       3. 服务端开始监听
+*       4. 服务端获取一个已经连接成功客户端的新建socket
+*       5. 客户端与服务端收发数据
+*       6. 关闭套接字
+================================================================*/
+#include <iostream>
+#include <string>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+#define CHECK_RET(q) if((q) == false){ return -1; }
+
+struct _person_info_t{
+    char name[16];
+    char sex[4];
+    int age;
+};
+
+class TcpSocket
+{
+    public:
+        TcpSocket():_sockfd(-1){
+        }
+        ~TcpSocket(){
+        }
+        int GetFd() {
+            return _sockfd;
+        }
+        bool Socket() {
+            _sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+            if (_sockfd < 0) {
+                std::cout<<"socket error\n";
+                return false;
+            }
+            return true;
+        }
+        bool Bind(std::string &ip, uint16_t port) {
+            struct sockaddr_in addr;
+            addr.sin_family = AF_INET;
+            addr.sin_port = htons(port);
+            addr.sin_addr.s_addr = inet_addr(ip.c_str());
+            socklen_t len = sizeof(struct sockaddr_in);
+
+            int ret = bind(_sockfd, (struct sockaddr*)&addr, len);
+            if (ret < 0) {
+                std::cout<<"bind error\n";
+                return false;
+            }
+            return true;
+        }
+        //开始监听，设置服务端的同一时间最大并发连接数
+        bool Listen(int baklog = 5) {
+            //int listen(int sockfd, int backlog);
+            //sockfd:   套接字描述符
+            //backlog： backlog设置内核中已完成连接队列的最大节点数量
+            int ret = listen(_sockfd, baklog);
+            if (ret < 0) {
+                std::cout<<"listen error\n";
+                return false;
+            }
+            return true;
+        }
+        //获取连接成功客户端socket，并且返回客户端的地址信息
+        bool Accept(TcpSocket &sock, struct sockaddr_in *addr = NULL){
+            //int accept(
